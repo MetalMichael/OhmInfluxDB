@@ -1,4 +1,4 @@
-﻿namespace OhmGraphite
+﻿namespace OhmInfluxDB
 {
     public class Sensor
     {

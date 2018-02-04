@@ -4,26 +4,36 @@ using System.Diagnostics;
 using System.IO;
 using System.Net.Sockets;
 using System.Timers;
+using InfluxDB.Collector;
+using InfluxDB.Collector.Diagnostics;
 using NLog;
 using OpenHardwareMonitor.Hardware;
 
-namespace OhmGraphite
+namespace OhmInfluxDB
 {
     public class MetricTimer
     {
         private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
+        private static bool ShowMetricsFirstRun = true;
 
         private readonly Computer _computer;
-        private readonly int _graphitePort;
-        private readonly string _graphiteHost;
         private readonly Timer _timer;
 
-        public MetricTimer(Computer computer, TimeSpan interval, string graphiteHost, int graphitePort = 2003)
+        public MetricTimer(Computer computer, TimeSpan interval, string address)
         {
             _computer = computer;
-            _graphitePort = graphitePort;
-            _graphiteHost = graphiteHost;
-            _timer = new Timer(interval.TotalMilliseconds) {AutoReset = true};
+            CollectorLog.RegisterErrorHandler((s, e) =>
+            {
+                Logger.Error(s + " - " + e.Message);
+            });
+
+            Metrics.Collector = new CollectorConfiguration()
+                .Tag.With("host", Environment.MachineName)
+                .Batch.AtInterval(interval)
+                .WriteTo.InfluxDB(address, "ohm")
+                .CreateCollector();
+
+            _timer = new Timer(interval.TotalMilliseconds) { AutoReset = true };
             _timer.Elapsed += ReportMetrics;
         }
 
@@ -45,10 +55,9 @@ namespace OhmGraphite
             // are being retrieved so calculate the timestamp of the signaled event
             // only once.
             long epoch = ((DateTimeOffset) e.SignalTime).ToUnixTimeSeconds();
-            string host = Environment.MachineName;
             try
             {
-                SendMetrics(host, epoch);
+                SendMetrics(epoch);
             }
             catch (Exception ex)
             {
@@ -56,32 +65,34 @@ namespace OhmGraphite
             }
         }
 
-        private void SendMetrics(string host, long epoch)
+        private void SendMetrics(long epoch)
         {
-            int sensorCount = 0;
+            var sensorCount = 0;
+            Metrics.Increment("iterations");
 
-            // Every 5 seconds (or superceding interval) we connect to graphite
+            // Every 5 seconds (or superceding interval) we connect to influxDb
             // and poll the hardware. It may be inefficient to open a new connection
             // every 5 seconds, and there are ways to optimize this, but opening a
             // new connection is the easiest way to ensure that previous failures
             // don't affect future results
             var stopwatch = Stopwatch.StartNew();
-            using (var client = new TcpClient(_graphiteHost, _graphitePort))
-            using (var networkStream = client.GetStream())
-            using (var writer = new StreamWriter(networkStream))
+            foreach (var sensor in ReadSensors(_computer))
             {
-                foreach (var sensor in ReadSensors(_computer))
+                var data = Normalize(sensor);
+
+                Metrics.Write(data.Identifier, new Dictionary<string, object>
                 {
-                    var data = Normalize(sensor);
+                    {data.Name, data.Value},
+                });
 
-                    // Graphite API wants <metric> <value> <timestamp>. We prefix the metric
-                    // with `ohm` as to not overwrite potentially existing metrics
-                    writer.WriteLine($"ohm.{host}.{data.Identifier}.{data.Name} {data.Value} {epoch:d}");
+                sensorCount++;
 
-                    sensorCount++;
-                }
+                if (ShowMetricsFirstRun)
+                    Logger.Info($"Sensor: {data.Identifier} - {data.Name} ({data.Value})");
             }
 
+            ShowMetricsFirstRun = false;
+            stopwatch.Stop();
             Logger.Info($"Sent {sensorCount} metrics in {stopwatch.Elapsed.TotalMilliseconds}ms");
         }
 

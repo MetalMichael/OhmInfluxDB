@@ -4,11 +4,11 @@
     <OutputType>Exe</OutputType>
     <TargetFramework>net46</TargetFramework>
     <PlatformTarget>AnyCPU</PlatformTarget>
-    <Authors>Nick Babcock</Authors>
+    <Authors>Michael Fiford</Authors>
 
 
-    <Description>Extract hardware sensor data and exports it to a given host and port in a graphite compatible format</Description>
-    <Copyright>Nick Babcock</Copyright>
+    <Description>Extract hardware sensor data and exports it to a given host and port in a InfluxDB compatible format</Description>
+    <Copyright>Michael Fiford</Copyright>
     <Major>0</Major>
     <Minor>1</Minor>
     <Revision>1</Revision>
@@ -17,6 +17,8 @@
     <InformationalVersion>$(Major).$(Minor).$(Revision)</InformationalVersion>
     <Version>$(Major).$(Minor).$(Revision)</Version>
     <FileVersion>$(Major).$(Minor).$(Revision)</FileVersion>
+    <AssemblyName>OhmInfluxDB</AssemblyName>
+    <RootNamespace>OhmInfluxDB</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
@@ -30,13 +32,14 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="InfluxDB.Collector" Version="1.0.0" />
     <PackageReference Include="NLog.Config" Version="4.4.12" />
     <PackageReference Include="TopShelf" Version="4.0.3" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\LibreHardwareMonitor\OpenHardwareMonitorLib.csproj" />
-  </ItemGroup>
-  <ItemGroup>
+    <Reference Include="OpenHardwareMonitorLib">
+      <HintPath>..\OpenHardwareMonitorLib.dll</HintPath>
+    </Reference>
     <Reference Include="System.Configuration" />
   </ItemGroup>
 </Project>
