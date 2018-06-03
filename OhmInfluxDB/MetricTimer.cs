@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
-using System.Net.Sockets;
 using System.Timers;
 using InfluxDB.Collector;
 using InfluxDB.Collector.Diagnostics;
@@ -14,7 +12,12 @@ namespace OhmInfluxDB
     public class MetricTimer
     {
         private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
+
+#if DEBUG
         private static bool ShowMetricsFirstRun = true;
+#else
+        private static bool ShowMetricsFirstRun = false;
+#endif
 
         private readonly Computer _computer;
         private readonly Timer _timer;
@@ -24,7 +27,10 @@ namespace OhmInfluxDB
             _computer = computer;
             CollectorLog.RegisterErrorHandler((s, e) =>
             {
-                Logger.Error(s + " - " + e.Message);
+                var err = s;
+                if (e != null)
+                    s += " - " + e.Message;
+                Logger.Error(err);
             });
 
             Metrics.Collector = new CollectorConfiguration()
