@@ -22,7 +22,7 @@ namespace OhmInfluxDB
         private readonly Computer _computer;
         private readonly Timer _timer;
 
-        public MetricTimer(Computer computer, TimeSpan interval, string address)
+        public MetricTimer(Computer computer, TimeSpan interval, string address, string database)
         {
             _computer = computer;
             CollectorLog.RegisterErrorHandler((s, e) =>
@@ -36,7 +36,7 @@ namespace OhmInfluxDB
             Metrics.Collector = new CollectorConfiguration()
                 .Tag.With("host", Environment.MachineName)
                 .Batch.AtInterval(interval)
-                .WriteTo.InfluxDB(address, "ohm")
+                .WriteTo.InfluxDB(address, database)
                 .CreateCollector();
 
             _timer = new Timer(interval.TotalMilliseconds) { AutoReset = true };

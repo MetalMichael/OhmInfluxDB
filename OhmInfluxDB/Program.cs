@@ -12,6 +12,7 @@ namespace OhmInfluxDB
         private static int Port = 8086;
         private static string Protocol = "http";
         private static int Timeout = 5;
+        private static string Database = "ohm";
 
         private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
 
@@ -38,7 +39,7 @@ namespace OhmInfluxDB
                     };
 
                     var address = $"{Protocol}://{Host}:{Port}";
-                    s.ConstructUsing(name => new MetricTimer(computer, TimeSpan.FromSeconds(Timeout), address));
+                    s.ConstructUsing(name => new MetricTimer(computer, TimeSpan.FromSeconds(Timeout), address, Database));
                     s.WhenStarted(tc => tc.Start());
                     s.WhenStopped(tc => tc.Stop());
                 });
@@ -54,14 +55,13 @@ namespace OhmInfluxDB
         private static void ParseConfig()
         {
             if (ConfigurationManager.AppSettings["host"] != null)
-            {
                 Host = ConfigurationManager.AppSettings["host"];
-            }
 
             if (ConfigurationManager.AppSettings["protocol"] != null)
-            {
                 Protocol = ConfigurationManager.AppSettings["protocol"];
-            }
+
+            if (ConfigurationManager.AppSettings["database"] != null)
+                Database = ConfigurationManager.AppSettings["database"];
 
             int.TryParse(ConfigurationManager.AppSettings["port"], out Port);
             int.TryParse(ConfigurationManager.AppSettings["interval"], out Timeout);
